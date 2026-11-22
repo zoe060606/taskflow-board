@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "vue";
+import { ref, computed } from "vue";
 import TaskCard from "./TaskCard.vue";
 
 // ================= 【需要你自己补充的逻辑】 =================
@@ -11,6 +11,10 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  status: {
+    type: String,
+    required: true,
+  },
   tasks: {
     type: Array,
     default: () => [],
@@ -18,14 +22,30 @@ const props = defineProps({
 });
 
 // 练习 2：使用 defineEmits 声明一个 'delete-task' 事件，把卡片触发的删除事件继续往外抛给 App.vue
-const emit = defineEmits(["delete-task"]);
+const emit = defineEmits(["delete-task", "drop-task", "edit-task"]);
+//控制拖拽悬停在当前列上方时的边框高亮效果
+const isDragOver = ref(false);
+
+const handleDrop = (e) => {
+  isDragOver.value = false;
+  const taskId = e.dataTransfer.getData("taskId");
+  if (taskId) {
+    emit("drop-task", taskId, props.status);
+  }
+};
 // 练习 3：用 computed 计算当前列的任务总数 taskCount（返回 props.tasks.length）
 const taskCount = computed(() => props.tasks.length);
 // ==========================================================
 </script>
 
 <template>
-  <div class="board-column">
+  <div
+    class="board-column"
+    :class="{ 'drag-over': isDragOver }"
+    @dragover.prevent="isDragOver = true"
+    @dragleave="isDragOver = false"
+    @drop="handleDrop"
+  >
     <div class="column-header">
       <span class="column-title">{{ title }}</span>
       <span class="task-count">{{ taskCount }}</span>
@@ -37,6 +57,7 @@ const taskCount = computed(() => props.tasks.length);
         :key="item.id"
         :task="item"
         @delete="(id) => emit('delete-task', id)"
+        @edit="(task) => emit('edit-task', task)"
       />
       <div v-if="tasks.length === 0" class="empty-tip">暂无任务</div>
     </div>
@@ -84,5 +105,9 @@ const taskCount = computed(() => props.tasks.length);
   color: #909399;
   font-size: 13px;
   padding: 30px 0;
+}
+.board-column.drag-over {
+  background-color: #ecf5ff;
+  outline: 2px dashed #409eff;
 }
 </style>

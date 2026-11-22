@@ -5,9 +5,12 @@
 const props = defineProps({ task: { type: Object, required: true } });
 // 练习 2：使用 defineEmits 声明一个名为 'delete' 的自定义事件，用来通知父组件删除当前卡片
 // 提示：const emit = defineEmits(['delete'])
-const emit = defineEmits(["delete"]);
+const emit = defineEmits(["delete", "edit"]);
 // ==========================================================
-
+//开始拖拽时，把当前卡片的 ID 存进浏览器拖拽数据包中
+const handleDragStart = (e) => {
+  e.dataTransfer.setData("taskId", props.task.id);
+};
 // 优先级对应的中文和 Element Plus 标签颜色映射（直接复用即可）
 const priorityMap = {
   high: { text: "高优先级", type: "danger" },
@@ -17,7 +20,7 @@ const priorityMap = {
 </script>
 
 <template>
-  <div class="task-card">
+  <div class="task-card" draggable="true" @dragstart="handleDragStart">
     <div class="card-header">
       <el-tag
         :type="priorityMap[task.priority]?.type || 'info'"
@@ -27,14 +30,19 @@ const priorityMap = {
         {{ priorityMap[task.priority]?.text || "普通" }}
       </el-tag>
       <!-- 点击删除按钮时，通过 emit 触发 'delete' 事件并把 task.id 传出去 -->
-      <el-button
-        type="danger"
-        link
-        size="small"
-        @click="emit('delete', task.id)"
-      >
-        删除
-      </el-button>
+      <div class="card-actions">
+        <el-button type="primary" link size="small" @click="emit('edit', task)">
+          编辑
+        </el-button>
+        <el-button
+          type="danger"
+          link
+          size="small"
+          @click="emit('delete', task.id)"
+        >
+          删除
+        </el-button>
+      </div>
     </div>
 
     <h4 class="card-title">{{ task.title }}</h4>
@@ -57,6 +65,7 @@ const priorityMap = {
   transition:
     transform 0.2s,
     box-shadow 0.2s;
+  cursor: grab;
 }
 .task-card:hover {
   transform: translateY(-2px);

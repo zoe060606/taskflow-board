@@ -35,7 +35,22 @@ export const useTaskStore = defineStore("task", () => {
   // 1. State：从 localStorage 读取初始数据，没有则使用 defaultTasks
   const saved = localStorage.getItem(STORAGE_KEY);
   const tasks = ref(saved ? JSON.parse(saved) : defaultTasks);
-
+  //历史快照栈（最多记录 15 步操作）
+  const historyStack = ref([]);
+  //记录当前状态快照（在每次增删改之前调用）
+  const saveSnapshot = () => {
+    const snapshot = JSON.parse(JSON.stringify(tasks.value));
+    historyStack.value.push(snapshot);
+    if (historyStack.value.length > 15) {
+      historyStack.value.shift(); //超过 15 步丢弃最早的一条
+    }
+  };
+  //撤销回退到上一步
+  const undo = () => {
+    if (historyStack.value.length === 0) return false;
+    tasks.value = historyStack.value.pop();
+    return true;
+  };
   // 自动持久化：只要 tasks 发生任何变化，自动存入浏览器本地存储
   watch(
     tasks,
@@ -51,6 +66,7 @@ export const useTaskStore = defineStore("task", () => {
   // 参数 taskData 是一个包含 { title, description, priority, dueDate } 的对象
   // 提示：补全 id（可以用 Date.now().toString()）和默认 status: 'todo'，然后 push 或 unshift 进 tasks.value
   const addTask = (taskData) => {
+    saveSnapshot();
     const newTask = {
       id: DataTransfer.now().toString(),
       status: "todo",
@@ -63,6 +79,7 @@ export const useTaskStore = defineStore("task", () => {
   // 参数 taskId 是要删除的任务 id
   // 提示：用数组 filter 方法过滤掉 id 等于 taskId 的那一项，重新赋值给 tasks.value
   const deleteTask = (taskId) => {
+    saveSnapshot();
     tasks.value = tasks.value.filter((item) => item, id !== taskId);
   };
 
@@ -70,6 +87,7 @@ export const useTaskStore = defineStore("task", () => {
   // 参数 updatedTask 是修改后的完整任务对象（包含 id）
   // 提示：用 findIndex 找到对应任务下标，如果存在则替换掉 tasks.value[index]
   const updateTask = (updatedTask) => {
+    saveSnapshot();
     const index = tasks.value.findIndex((item) => item.id === updatedTask.id);
     if (index !== -1) {
       tasks.value[index] = { ...updateTask };
@@ -80,6 +98,7 @@ export const useTaskStore = defineStore("task", () => {
   // 参数 taskId 为卡片 id，newStatus 为目标列状态（'todo' | 'doing' | 'done'）
   // 提示：用 find 找到对应任务，把它的 status 改为 newStatus
   const changeTaskStatus = (taskId, newStatus) => {
+    saveSnapshot();
     const target = tasks.value.find((item) => item.id === taskId);
     if (target) {
       target.status = newStatus;
@@ -90,9 +109,11 @@ export const useTaskStore = defineStore("task", () => {
 
   return {
     tasks,
+    historyStack,
     addTask,
     deleteTask,
     updateTask,
     changeTaskStatus,
+    undo,
   };
 });
